@@ -1,51 +1,103 @@
-// Global quotes array
-let quotes = [
-  { text: "Be yourself; everyone else is already taken.", category: "Inspiration" },
-  { text: "Do or do not. There is no try.", category: "Motivation" },
-  { text: "The purpose of our lives is to be happy.", category: "Life" }
-];
+let quotes = [];
 
-// Function to show a random quote
+// Load from Local Storage on start
+document.addEventListener("DOMContentLoaded", () => {
+  loadQuotes();
+
+  // Event Listeners
+  document.getElementById("newQuote").addEventListener("click", showRandomQuote);
+  document.getElementById("addQuoteBtn").addEventListener("click", addQuote);
+  document.getElementById("exportBtn").addEventListener("click", exportToJson);
+  document.getElementById("importFile").addEventListener("change", importFromJsonFile);
+
+  // Restore last viewed quote (sessionStorage)
+  const lastQuote = sessionStorage.getItem("lastQuote");
+  if (lastQuote) {
+    document.getElementById("quoteDisplay").innerHTML = lastQuote;
+  }
+});
+
+function loadQuotes() {
+  const stored = localStorage.getItem("quotes");
+  if (stored) {
+    quotes = JSON.parse(stored);
+  } else {
+    quotes = [
+      { text: "Be yourself; everyone else is already taken.", category: "Inspiration" },
+      { text: "Do or do not. There is no try.", category: "Motivation" }
+    ];
+    saveQuotes();
+  }
+}
+
+function saveQuotes() {
+  localStorage.setItem("quotes", JSON.stringify(quotes));
+}
+
 function showRandomQuote() {
-  const quoteDisplay = document.getElementById("quoteDisplay");
+  const display = document.getElementById("quoteDisplay");
 
   if (quotes.length === 0) {
-    quoteDisplay.innerText = "No quotes available. Please add one.";
+    display.innerHTML = "<p>No quotes available.</p>";
     return;
   }
 
   const randomIndex = Math.floor(Math.random() * quotes.length);
   const quote = quotes[randomIndex];
 
-  quoteDisplay.innerHTML = `<p>"${quote.text}"</p><small>Category: ${quote.category}</small>`;
+  const html = `<p>"${quote.text}"</p><small>Category: ${quote.category}</small>`;
+  display.innerHTML = html;
+
+  // Store in sessionStorage
+  sessionStorage.setItem("lastQuote", html);
 }
 
-// ✅ Function to add a new quote
 function addQuote() {
-  const quoteInput = document.getElementById("newQuoteText");
-  const categoryInput = document.getElementById("newQuoteCategory");
+  const text = document.getElementById("newQuoteText").value.trim();
+  const category = document.getElementById("newQuoteCategory").value.trim();
 
-  const quoteText = quoteInput.value.trim();
-  const quoteCategory = categoryInput.value.trim();
-
-  if (quoteText === "" || quoteCategory === "") {
+  if (!text || !category) {
     alert("Please enter both quote and category.");
     return;
   }
 
-  // ✅ Add to quotes array
-  quotes.push({ text: quoteText, category: quoteCategory });
-
-  // ✅ Clear inputs
-  quoteInput.value = "";
-  categoryInput.value = "";
-
-  // ✅ Update DOM
+  quotes.push({ text, category });
+  saveQuotes();
   showRandomQuote();
+
+  document.getElementById("newQuoteText").value = "";
+  document.getElementById("newQuoteCategory").value = "";
 }
 
-// ✅ Setup event listeners when page loads
-document.addEventListener("DOMContentLoaded", function () {
-  document.getElementById("newQuote").addEventListener("click", showRandomQuote);
-  document.getElementById("addQuoteBtn").addEventListener("click", addQuote);
-});
+function exportToJson() {
+  const data = JSON.stringify(quotes, null, 2);
+  const blob = new Blob([data], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "quotes.json";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+function importFromJsonFile(event) {
+  const fileReader = new FileReader();
+  fileReader.onload = function (e) {
+    try {
+      const importedQuotes = JSON.parse(e.target.result);
+      if (Array.isArray(importedQuotes)) {
+        quotes.push(...importedQuotes);
+        saveQuotes();
+        alert("Quotes imported successfully!");
+        showRandomQuote();
+      } else {
+        alert("Invalid JSON format.");
+      }
+    } catch (err) {
+      alert("Error reading file.");
+    }
+  };
+  fileReader.readAsText(event.target.files[0]);
+}
